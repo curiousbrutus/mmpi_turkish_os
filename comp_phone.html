@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4a90e2">
+    <title>MMPI-2 Mobile Analyzer</title>
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiTU1QSS0yIEFuYWx5emVyIiwic2hvcnRfbmFtZSI6Ik1NUEkgQW5hbHl6ZXIiLCJzdGFydF91cmwiOiIvIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzRhOTBlMiIsInRoZW1lX2NvbG9yIjoiIzRhOTBlMiIsImljb25zIjpbeyJzcmMiOiIvYXBpL3BsYWNlaG9sZGVyLzE5Mi8xOTIiLCJzaXplcyI6IjE5MngxOTIiLCJ0eXBlIjoiaW1hZ2UvcG5nIn1dfQ==">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --secondary: #f5f5f5;
+            --text: #333;
+            --border: #ddd;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --error: #f44336;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background-color: #f9f9f9;
+            padding: 0;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        /* Mobile-first header */
+        .header {
+            position: sticky;
+            top: 0;
+            background: var(--primary);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 0.5rem;
+            box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.5rem;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.8rem;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        /* Content Sections */
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 1rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 4rem; /* Space for bottom nav */
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        /* Mobile-optimized Input */
+        .input-area {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px; /* Prevents iOS zoom */
+            margin-bottom: 1rem;
+        }
+
+        /* Mobile-friendly buttons */
+        .button {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            background: var(--primary);
+            color: white;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-bottom: 0.5rem;
+        }
+
+        .button:active {
+            transform: scale(0.98);
+        }
+
+        /* File input styling */
+        .file-input-container {
+            margin-bottom: 1rem;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 1rem;
+            background: var(--secondary);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        /* Results display */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .score-card {
+            background: var(--secondary);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .score-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        /* Chart container */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 1rem 0;
+        }
+
+        /* Installation prompt */
+        .install-prompt {
+            position: fixed;
+            bottom: 70px;
+            left: 1rem;
+            right: 1rem;
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none;
+            z-index: 99;
+        }
+
+        /* Offline indicator */
+        .offline-indicator {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: var(--warning);
+            color: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            display: none;
+        }
+
+        /* Loading indicator */
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.9);
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+        @media (min-width: 768px) {
+            .app-container {
+                max-width: 768px;
+                padding: 2rem;
+            }
+
+            .section {
+                padding: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-indicator">You are offline</div>
+    <div class="loading">Analyzing...</div>
+    
+    <header class="header">
+        <h1>MMPI-2 Analyzer</h1>
+    </header>
+
+    <div class="app-container">
+        <section id="input-section" class="section">
+            <h2 class="section-title">Input Data</h2>
+            <div class="input-area">
+                <div class="file-input-container">
+                    <label class="file-input-label">
+                        <input type="file" class="file-input" accept=".txt,.csv,.xlsx,.xls">
+                        📁 Choose File
+                    </label>
+                    <div id="file-name"></div>
+                </div>
+                <textarea id="answer-input" placeholder="Enter answers in format:
+1. E
+2. H
+3. E
+..."></textarea>
+                <button class="button" id="analyze-btn">Analyze</button>
+            </div>
+        </section>
+
+        <section id="results-section" class="section" style="display: none;">
+            <h2 class="section-title">Results</h2>
+            <div class="results-grid" id="scores-grid"></div>
+            <div class="chart-container">
+                <canvas id="profile-chart"></canvas>
+            </div>
+            <div id="interpretations"></div>
+        </section>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="#input" class="nav-item active">
+            <span>📝 Input</span>
+        </a>
+        <a href="#results" class="nav-item">
+            <span>📊 Results</span>
+        </a>
+        <a href="#history" class="nav-item">
+            <span>📅 History</span>
+        </a>
+    </nav>
+
+    <div class="install-prompt" id="install-prompt">
+        <p>Install MMPI Analyzer on your device?</p>
+        <button class="button" id="install-btn">Install</button>
+        <button class="button" style="background: var(--secondary); color: var(--text);" id="cancel-install">Not Now</button>
+    </div>
+
+    <script>
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(registration => {
+                console.log('ServiceWorker registered');
+            }).catch(err => {
+                console.log('ServiceWorker registration failed:', err);
+            });
+        }
+
+        // MMPI Analyzer Class
+        class MMPIAnalyzer {
+            constructor() {
+                this.scales = {
+                    'L': { mean: 4.0, sd: 2.5 },
+                    'F': { mean: 3.5, sd: 3.0 },
+                    'K': { mean: 12.0, sd: 4.5 },
+                    'Hs': { mean: 11.0, sd: 4.0 },
+                    'D': { mean: 18.0, sd: 4.5 },
+                    'Hy': { mean: 20.0, sd: 5.0 },
+                    'Pd': { mean: 17.0, sd: 4.0 },
+                    'Mf': { mean: 20.0, sd: 5.0 },
+                    'Pa': { mean: 9.0, sd: 3.0 },
+                    'Pt': { mean: 22.0, sd: 5.0 },
+                    'Sc': { mean: 22.0, sd: 5.0 },
+                    'Ma': { mean: 15.0, sd: 4.0 },
+                    'Si': { mean: 26.0, sd: 9.0 }
+                };
+            }
+
+            async analyze(answers) {
+                // Simulate processing time
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Mock analysis results
+                const results = {};
+                for (const scale in this.scales) {
+                    results[scale] = 50 + Math.random() * 20;
+                }
+                return results;
+            }
+
+            interpretScores(scores) {
+                const interpretations = {};
+                for (const [scale, score] of Object.entries(scores)) {
+                    let severity = "";
+                    if (score >= 70) severity = "Very High";
+                    else if (score >= 65) severity = "High";
+                    else if (score <= 35) severity = "Low";
+                    else if (score <= 40) severity = "Somewhat Low";
+                    else severity = "Normal";
+                    
+                    interpretations[scale] = `${scale}: ${severity} (${score.toFixed(1)})`;
+                }
+                return interpretations;
+            }
+        }
+
+        // App UI Handler
+        class MMPIApp {
+            constructor() {
+                this.analyzer = new MMPIAnalyzer();
+                this.chart = null;
+                this.initializeUI();
+                this.setupEventListeners();
+                this.checkConnectivity();
+            }
+
+            initializeUI() {
+                this.elements = {
+                    fileInput: document.querySelector('.file-input'),
+                    fileName: document.getElementById('file-name'),
+                    answerInput: document.getElementById('answer-input'),
+                    analyzeBtn: document.getElementById('analyze-btn'),
+                    scoresGrid: document.getElementById('scores-grid'),
+                    interpretations: document.getElementById('interpretations'),
+                    loading: document.querySelector('.loading'),
+                    inputSection: document.getElementById('input-section'),
+                    resultsSection: document.getElementById('results-section'),
+                    navItems: document.querySelectorAll('.nav-item'),
+                    offlineIndicator: document.querySelector('.offline-indicator')
+                };
+            }
+
+            setupEventListeners() {
+                this.elements.fileInput.addEventListener('change', this.handleFileInput.bind(this));
+                this.elements.analyzeBtn.addEventListener('click', this.handleAnalysis.bind(this));
+                this.elements.navItems.forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.handleNavigation(e.currentTarget);
+                    });
+                });
+            }
+
+            async handleFileInput(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    this.elements.fileName.textContent = file.name;
+                    const text = await file.text();
+                    this.elements.answerInput.value = text;
+                }
+            }
+
+            async handleAnalysis() {
+                try {
+                    this.showLoading(true);
+                    const answers = this.elements.answerInput.value;
+                    const scores = await this.analyzer.analyze(answers);
+                    const interpretations = this.analyzer.interpretScores(scores);
+                    
+                    this.displayResults(scores, interpretations);
+                    this.switchToResults();
+                    this.saveToHistory(scores, interpretations);
+                } catch (error) {
+                    alert('Analysis failed: ' + error.message);
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            displayResults(scores, interpretations) {
+                // Display scores
+                this.elements.scoresGrid.innerHTML = Object.entries(scores).map(([scale, score]) => (
+    `
+      <div class="score-card">
+        <span>${scale}</span>
+        <span class="score-value">${score.toFixed(1)}</span>
+      </div>
+    `
+  )).join('');
+
+  // Display interpretations
+  this.elements.interpretations.textContent = '';
+  for (const [scale, interpretation] of Object.entries(interpretations)) {
+    const p = document.createElement('p');
+    p.textContent = interpretation;
+    this.elements.interpretations.appendChild(p);
+  }
+
+  // Create and display chart
+  if (!this.chart) {
+    const ctx = document.getElementById('profile-chart').getContext('2d');
+    this.chart = new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: Object.keys(scores),
+        datasets: [{
+          label: 'MMPI-2 Scores',
+          data: Object.values(scores),
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          borderColor: 'rgba(255, 99, 132, 1)',
+          pointRadius: 5,
+          pointHitRadius: 10,
+          pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+          pointBorderColor: 'rgba(255, 99, 132, 1)',
+          pointHoverBackgroundColor: 'rgba(255, 99, 132, 0.8)',
+          pointHoverBorderColor: 'rgba(255, 99, 132, 1)',
+        }]
+      },
+      options: {
+        scales: {
+          r: {
+            pointLabels: {
+              fontSize: 12,
+            }
+          }
+        }
+      }
+    });
+  } else {
+    this.chart.data.datasets[0].data = Object.values(scores);
+    this.chart.update();
+  }
+}
+
+switchToResults() {
+  this.elements.inputSection.style.display = 'none';
+  this.elements.resultsSection.style.display = 'block';
+  this.elements.navItems.forEach(item => item.classList.remove('active'));
+  document.querySelector('.nav-item[href="#results"]').classList.add('active');
+}
+
+showLoading(show) {
+  this.elements.loading.style.display = show ? 'block' : 'none';
+}
+
+checkConnectivity() {
+  if (!navigator.onLine) {
+    this.elements.offlineIndicator.style.display = 'block';
+  }
+}
+
+// (Optional) Implement functions to save analysis results to history
+saveToHistory(scores, interpretations) {
+  // Implement logic to store results in local storage or a database
+  console.log('Analysis results saved to history.');
+}
+
+// (Optional) Implement functions to load analysis results from history
+loadFromHistory() {
+  // Implement logic to retrieve results from local storage or a database
+  console.log('Analysis results loaded from history.');
+}
+
+// (Optional) Implement functions to share analysis results
+shareResults() {
+  // Implement logic to share results via email, social media, etc.
+  console.log('Analysis results shared.');
+}
+
+// (Optional) Implement functions to download analysis results
+downloadResults() {
+  // Implement logic to download results as a file
+  console.log('Analysis results downloaded.');
+}
+}
+
+        const app = new MMPIApp();
+    </script>
+</body>
+</html>
